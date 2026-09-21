@@ -1,0 +1,19 @@
+{
+  "name": "smart-contract-project",
+  "version": "1.0.0",
+  "description": "Freelance Milestone Escrow - Solidity contract + React frontend (Rabby Wallet POC)",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "compile": "node scripts/compile.js",
+    "deploy": "node scripts/deploy.js"
+  },
+  "devDependencies": {
+    "solc": "0.8.20"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.0"
+  },
+  "license": "MIT"
+}

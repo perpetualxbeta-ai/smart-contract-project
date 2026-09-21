@@ -1,0 +1,299 @@
+:root {
+  --bg-0: #05060a;
+  --bg-1: #0b0e17;
+  --bg-2: #11162399;
+  --border: #232a3d;
+  --text-0: #e8ecf7;
+  --text-1: #97a1bd;
+  --neon-cyan: #4bf0ff;
+  --neon-purple: #b388ff;
+  --neon-pink: #ff5ec4;
+  --neon-green: #43ffaf;
+  --neon-amber: #ffcb57;
+  --neon-red: #ff5c7a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--text-0);
+  background:
+    radial-gradient(circle at 15% 10%, rgba(75, 240, 255, 0.08), transparent 40%),
+    radial-gradient(circle at 85% 20%, rgba(179, 136, 255, 0.10), transparent 45%),
+    radial-gradient(circle at 50% 100%, rgba(255, 94, 196, 0.06), transparent 50%),
+    var(--bg-0);
+}
+
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 20px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.app__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.app__header h1 {
+  margin: 0 0 4px;
+  font-size: 1.6rem;
+  letter-spacing: -0.01em;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.app__subtitle {
+  margin: 0;
+  color: var(--text-1);
+  font-size: 0.9rem;
+}
+
+.app__footer {
+  text-align: center;
+  color: var(--text-1);
+  font-size: 0.75rem;
+  margin-top: 8px;
+}
+
+.btn {
+  border: 1px solid var(--border);
+  background: #12162280;
+  color: var(--text-0);
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.btn--primary {
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+  box-shadow: 0 0 0px rgba(75, 240, 255, 0);
+}
+.btn--primary:not(:disabled):hover {
+  box-shadow: 0 0 18px rgba(75, 240, 255, 0.35);
+}
+
+.btn--neon {
+  border-color: var(--neon-purple);
+  color: #05060a;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple));
+}
+.btn--neon:not(:disabled):hover {
+  box-shadow: 0 0 22px rgba(179, 136, 255, 0.45);
+}
+
+.btn--danger {
+  border-color: var(--neon-red);
+  color: var(--neon-red);
+}
+.btn--danger:not(:disabled):hover {
+  box-shadow: 0 0 18px rgba(255, 92, 122, 0.35);
+}
+
+.wallet-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  background: #10131f;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+}
+
+.wallet-chip__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--neon-green);
+  box-shadow: 0 0 8px var(--neon-green);
+}
+
+.banner {
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  border: 1px solid transparent;
+}
+
+.banner--error {
+  background: rgba(255, 92, 122, 0.08);
+  border-color: rgba(255, 92, 122, 0.4);
+  color: #ffb3c1;
+}
+
+.card {
+  background: var(--bg-2);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-shadow: 0 0 40px rgba(75, 240, 255, 0.04);
+}
+
+.card--empty {
+  align-items: center;
+  text-align: center;
+  color: var(--text-1);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--badge-border, var(--neon-purple));
+  color: var(--badge-color, var(--neon-purple));
+}
+
+.status-badge__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.status-badge--amber { --badge-color: var(--neon-amber); --badge-border: rgba(255, 203, 87, 0.5); }
+.status-badge--cyan { --badge-color: var(--neon-cyan); --badge-border: rgba(75, 240, 255, 0.5); }
+.status-badge--green { --badge-color: var(--neon-green); --badge-border: rgba(67, 255, 175, 0.5); }
+.status-badge--pink { --badge-color: var(--neon-pink); --badge-border: rgba(255, 94, 196, 0.5); }
+.status-badge--purple { --badge-color: var(--neon-purple); --badge-border: rgba(179, 136, 255, 0.5); }
+
+.pills {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.address-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  background: #0d1019;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  flex: 1 1 180px;
+}
+
+.address-pill--you {
+  border-color: var(--neon-cyan);
+}
+
+.address-pill__label {
+  color: var(--text-1);
+}
+
+.address-pill__value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.address-pill__you-tag {
+  margin-left: auto;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  border: 1px solid var(--neon-cyan);
+  border-radius: 6px;
+  padding: 1px 5px;
+}
+
+.balance {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 0;
+}
+
+.balance__label {
+  color: var(--text-1);
+  font-size: 0.85rem;
+}
+
+.balance__value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.2rem;
+  color: var(--neon-green);
+}
+
+.role-tag {
+  font-size: 0.85rem;
+  color: var(--text-1);
+}
+
+.role-tag strong {
+  color: var(--text-0);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.deposit-form {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.deposit-form input {
+  flex: 1 1 140px;
+  background: #0d1019;
+  border: 1px solid var(--border);
+  color: var(--text-0);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+}
+
+.deposit-form input:focus {
+  outline: none;
+  border-color: var(--neon-cyan);
+}
+
+.done-note,
+.observer-note {
+  color: var(--text-1);
+  font-size: 0.88rem;
+  margin: 0;
+}
