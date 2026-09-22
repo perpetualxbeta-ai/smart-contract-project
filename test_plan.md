@@ -1,17 +1,24 @@
-Overview
+**Overview**
+
 This repo is a proof-of-concept single-milestone escrow: one Solidity contract, contracts/FreelanceMilestoneEscrow.sol (pragma ^0.8.20), plus a Vite/React frontend that connects to an injected EIP-1193 wallet (Rabby Wallet, or any other). A client deploys the contract naming a freelancer address, funds it, then either releases payment to the freelancer or the freelancer voluntarily refunds the client. All state transitions and transfers are enforced on-chain via a 4-state enum (AWAITING_PAYMENT → FUNDED → COMPLETED / REFUNDED); the frontend only reflects contract state, it doesn't gate anything itself.
 There is currently no test suite and no test framework configured — no Hardhat, Foundry, or Truffle. scripts/compile.js calls solc directly and scripts/deploy.js deploys with ethers v6 against any JSON-RPC endpoint. This plan is written to be built from scratch.
-Scope
+
+**Scope**
+
 In scope: contracts/FreelanceMilestoneEscrow.sol (constructor + all 5 functions), and frontend/src/hooks/useEscrowContract.js — the only frontend code that talks to the contract (App.jsx and the presentational components are UI-only and are exercised indirectly through the hook).
 Out of scope: wallet UX polish, gas-optimization tuning, upgradability (the contract isn't upgradeable), and multi-milestone support (this is explicitly single-milestone by design, not a gap).
+
 Objective: prove the state machine can't be driven into an inconsistent state, funds always land with the correct party, both roles are strictly gated, and the escape-hatch refund actually works under adversarial conditions.
+
 Test environment setup
 npm test doesn't exist yet — there's no framework wired up. Recommended setup:
 1. Add Hardhat (fits cleanly with the existing solc 0.8.20 / ethers v6 toolchain already used by scripts/deploy.js): npm install --save-dev hardhat @nomicfoundation/hardhat-toolbox, then a hardhat.config.js pointing at contracts/. Write specs in test/FreelanceMilestoneEscrow.test.js using the toolbox's chai matchers (expect(...).to.be.revertedWithCustomError(...), expect(...).to.emit(...)) plus loadFixture for a fresh-deploy-per-test pattern.
     ◦ Alternative: Foundry (forge test) for tests written in Solidity itself — the README already points at anvil as a suggested local dev chain, so Foundry would reuse that.
 2. Run everything against a local chain (npx hardhat node or anvil), never a public testnet.
 3. Frontend hook tests: Vitest + @testing-library/react, with a mocked window.ethereum (a hand-rolled EIP-1193 mock, or a library like viem's test client) to exercise useEscrowContract.js without a real wallet or browser extension.
-Unit tests (per function)
+   
+**Unit tests (per function)**
+
 Constructor
 • Reverts ZeroAddress when _freelancer is address(0).
 • Sets client = msg.sender, freelancer = _freelancer, state = AWAITING_PAYMENT.
@@ -37,7 +44,8 @@ getBalance()
 • Returns 0 after releasePayment() or refundClient().
 Reentrancy (CEI check)
 • Deploy a malicious freelancer/client contract whose receive() tries to re-enter releasePayment()/refundClient(); confirm the reentrant call reverts with InvalidState (state is already flipped before the external call), proving the checks-effects-interactions ordering actually holds at runtime, not just by inspection.
-Integration tests (end-to-end flows)
+
+**Integration tests (end-to-end flows)**
 1. Full happy path: deploy → client deposits → client releases → freelancer's balance increases by the deposited amount, contract ends COMPLETED with 0 balance.
 2. Full refund path: deploy → client deposits → freelancer refunds → client's balance is restored, contract ends REFUNDED with 0 balance.
 3. Out-of-order actions: attempting releasePayment()/refundClient() before any deposit, a second depositFunds() after funding, or either terminal action after the contract already reached COMPLETED/REFUNDED — every case reverts InvalidState and leaves balances untouched.
@@ -54,7 +62,8 @@ Security-focused test cases
 • No receive()/fallback(): a plain ETH transfer straight to the contract address (not via depositFunds()) should revert, since there's no payable fallback. Test this directly.
 • Zero-address / self-dealing: constructor already blocks freelancer == address(0); separately test that client == freelancer (self-escrow) doesn't break any invariant — it's allowed but should be a no-op oddity, not a way to double-spend.
 • Front-running: low risk here since depositFunds(), releasePayment(), and refundClient() take no attacker-influenced parameters (no slippage, no price, no arbitrary recipient) — there's nothing for a front-runner to sandwich. Worth one test confirming a pending releasePayment() tx can't be reordered to change its outcome.
-Test case matrix
+
+**Test case matrix**
 ID
 Area
 Case
@@ -203,7 +212,8 @@ Mock window.ethereum to test useEscrowContract.js in isolation
 Frontend e2e (stretch)
 Playwright + a wallet automation layer (e.g. Synpress) against a local anvil chain
 Only worth it once the unit/integration suite above is solid
-Known gaps and risks
+
+**Known gaps and risks**
 • No tests exist today — everything above is a from-scratch build; treat this plan as the spec for a first PR, not a checklist against an existing suite.
 • No pull-payment escape hatch: if the recipient of releasePayment() or refundClient() reverts on receiving ETH (accidentally or deliberately), funds are stuck in FUNDED with no third way out. The README already calls this a POC ("not audited"), but this is worth flagging explicitly as a design limitation rather than discovering it via a failing test.
 • Not audited: the README states this plainly. This test plan improves confidence but doesn't substitute for a professional audit before any real funds are involved.
