@@ -56,6 +56,7 @@ Reentrancy (CEI check)
 8. Event-driven refresh: after FundsDeposited/PaymentReleased/ClientRefunded fires on a mock contract, confirm the hook's refresh() re-fetches client/freelancer/state/getBalance() without needing a page reload.
 
 **Security-focused test cases**
+
 • Reentrancy: the contract already follows checks-effects-interactions (state is finalized before the external call). Cover it with the malicious-receiver test from Unit tests above rather than relying on code review alone.
 • Access control: fuzz over many arbitrary caller addresses (Foundry vm.prank + fuzzing, or a Hardhat loop over random signers) confirming only client can call client-only functions and only freelancer can call freelancer-only ones — broader than the handful of specific addresses in the unit tests.
 • Denial of service via a griefing recipient: if releasePayment()'s recipient (freelancer) or refundClient()'s recipient (client) is a contract that always reverts on receiving ETH, that call reverts and the contract is stuck in FUNDED forever — there's no pull-payment fallback. Test this explicitly and flag it in Risks below; it's the most realistic way funds get stuck.
