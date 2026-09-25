@@ -103,7 +103,7 @@ contract, recompile and update that file's `ESCROW_ABI` export to match
 
 ```bash
 npm install
-npm test                 # Hardhat: 30 contract tests (U-01..U-16, I-01..I-06, S-01..S-05)
+npm test                 # Hardhat: 31 contract tests (U-01..U-16, I-01..I-06, S-01..S-06)
 npm run test:coverage    # optional coverage report
 cd frontend && npm install && npm test   # Vitest: hook tests (I-07, I-08)
 ```
