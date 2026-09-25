@@ -6,9 +6,14 @@
   "type": "module",
   "scripts": {
     "compile": "node scripts/compile.js",
-    "deploy": "node scripts/deploy.js"
+    "deploy": "node scripts/deploy.js",
+    "test": "hardhat test",
+    "test:coverage": "hardhat coverage",
+    "node": "hardhat node"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.29.1",
     "solc": "0.8.20"
   },
   "dependencies": {
