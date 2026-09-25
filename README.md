@@ -99,6 +99,13 @@ injected wallets) rather than assuming MetaMask.
 contract, recompile and update that file's `ESCROW_ABI` export to match
 `artifacts/FreelanceMilestoneEscrow.json`.
 
+## Diagrams
+
+`DIAGRAMS.md` has Mermaid diagrams (rendered natively by GitHub): an architecture overview,
+sequence diagrams for connect, `depositFunds()`, `releasePayment()` and `refundClient()`
+(User/Wallet, Frontend, Ethers.js/Vite, contract), and the state machine with every
+custom-error revert and a transition table.
+
 ## Interactive simulator (no wallet needed)
 
 `docs/simulator.html` is a single-file, dependency-free replica of the escrow's state machine.
