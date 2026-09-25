@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Escrow Simulator</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #14181f; --muted: #5d6675; --line: #dfe3ea;
+    --accent: #4b5bdc; --accent-ink: #ffffff; --ok: #15803d; --ok-bg: #e6f5ec;
+    --bad: #b42318; --bad-bg: #fdecea; --warn: #b45309; --warn-bg: #fdf3e2;
+    --node: #eef0f5; --node-on: #4b5bdc; --node-on-ink: #fff; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1218; --card: #171b23; --ink: #e8ebf1; --muted: #939db0; --line: #2a303c;
+      --accent: #7d8bff; --accent-ink: #0d1020; --ok: #4ade80; --ok-bg: #12291b;
+      --bad: #ff8a80; --bad-bg: #2e1614; --warn: #fbbf62; --warn-bg: #2c2110;
+      --node: #212733; --node-on: #7d8bff; --node-on-ink: #0d1020;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1218; --card: #171b23; --ink: #e8ebf1; --muted: #939db0; --line: #2a303c;
+    --accent: #7d8bff; --accent-ink: #0d1020; --ok: #4ade80; --ok-bg: #12291b;
+    --bad: #ff8a80; --bad-bg: #2e1614; --warn: #fbbf62; --warn-bg: #2c2110;
+    --node: #212733; --node-on: #7d8bff; --node-on-ink: #0d1020;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+  header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  h1 { font-size: 22px; margin: 0 0 2px; }
+  .sub { color: var(--muted); margin: 0; font-size: 14px; max-width: 60ch; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  button { font: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 8px 12px; }
+  button:hover { border-color: var(--accent); }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button.ghost { background: transparent; }
+  .theme { font-size: 13px; }
+
+  /* state machine */
+  .flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 6px; }
+  .end { display: grid; gap: 6px; }
+  .node { background: var(--node); border-radius: 10px; padding: 10px 8px; text-align: center; font-family: var(--mono); font-size: 12px; border: 2px solid transparent; transition: background .25s, color .25s, transform .25s; }
+  .node.on { background: var(--node-on); color: var(--node-on-ink); transform: scale(1.04); }
+  .arrow { text-align: center; font-size: 11px; color: var(--muted); line-height: 1.25; }
+  .arrow b { display: block; font-size: 16px; color: var(--ink); }
+  @media (max-width: 620px) { .flow { grid-template-columns: 1fr; } .arrow b { transform: rotate(90deg); } }
+
+  /* accounts */
+  .accts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  @media (max-width: 760px) { .accts { grid-template-columns: 1fr 1fr; } }
+  .acct { border: 1px solid var(--line); border-radius: 10px; padding: 10px; min-width: 0; }
+  .acct .name { font-size: 12px; color: var(--muted); }
+  .acct .addr { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .acct .bal { font-size: 20px; font-weight: 650; margin-top: 2px; }
+  .acct.you { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .acct.flash { animation: flash .9s; }
+  @keyframes flash { 0% { background: var(--ok-bg); } 100% { background: transparent; } }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--node); color: var(--muted); margin-left: 4px; }
+
+  /* controls */
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; background: transparent; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .row label { color: var(--muted); font-size: 13px; }
+  input[type=text], select { font: inherit; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+  input[type=text] { width: 90px; }
+  .toggle { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; margin: 6px 0; }
+  .toggle input { margin-top: 3px; }
+  .hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+  .fn-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  @media (max-width: 480px) { .fn-btns { grid-template-columns: 1fr; } }
+  .fn-btns button { text-align: left; }
+  .fn-btns small { display: block; color: var(--muted); font-size: 12px; }
+  .fn-btns .primary small { color: inherit; opacity: .85; }
+
+  /* log */
+  #log { list-style: none; margin: 0; padding: 0; max-height: 380px; overflow: auto; }
+  #log li { border-left: 4px solid var(--line); padding: 8px 10px; margin-bottom: 8px; background: var(--node); border-radius: 0 8px 8px 0; font-size: 14px; }
+  #log li.ok { border-left-color: var(--ok); }
+  #log li.bad { border-left-color: var(--bad); background: var(--bad-bg); }
+  #log li.info { border-left-color: var(--warn); background: var(--warn-bg); }
+  #log .call { font-family: var(--mono); font-size: 13px; }
+  #log .res { font-weight: 600; }
+  #log li.ok .res { color: var(--ok); } #log li.bad .res { color: var(--bad); } #log li.info .res { color: var(--warn); }
+  #log .why { color: var(--muted); font-size: 13px; }
+  #log .test { font-family: var(--mono); font-size: 11px; color: var(--muted); float: right; }
+  .empty { color: var(--muted); font-size: 14px; }
+  footer { color: var(--muted); font-size: 12.5px; margin-top: 8px; }
+  code { font-family: var(--mono); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Freelance Milestone Escrow — Simulator</h1>
+      <p class="sub">An in-browser replica of <code>FreelanceMilestoneEscrow.sol</code>. No wallet, no chain, no install. Pick who you are, call a function, and watch the state machine allow it or revert. Try calling as the wrong person.</p>
+    </div>
+    <button class="ghost theme" id="theme" type="button">Toggle theme</button>
+  </header>
+
+  <section class="card" aria-label="Escrow state">
+    <h2>Escrow state</h2>
+    <div class="flow">
+      <div class="node" data-state="0">AWAITING_PAYMENT</div>
+      <div class="arrow"><b>→</b>depositFunds()<br>client</div>
+      <div class="node" data-state="1">FUNDED</div>
+      <div class="arrow"><b>→</b>releasePayment() · client<br>refundClient() · freelancer</div>
+      <div class="end">
+        <div class="node" data-state="2">COMPLETED</div>
+        <div class="node" data-state="3">REFUNDED</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" aria-label="Balances">
+    <h2>Balances</h2>
+    <div class="accts" id="accts"></div>
+  </section>
+
+  <div class="grid">
+    <section class="card" aria-label="Actions">
+      <h2>1. Choose who you are</h2>
+      <div class="row">
+        <div class="seg" role="group" aria-label="Acting as" id="actor">
+          <button type="button" data-actor="client" aria-pressed="true">Client</button>
+          <button type="button" data-actor="freelancer" aria-pressed="false">Freelancer</button>
+          <button type="button" data-actor="stranger" aria-pressed="false">Stranger</button>
+        </div>
+      </div>
+      <h2 style="margin-top:14px">2. Call a function</h2>
+      <div class="row">
+        <label for="amt">Deposit (ETH)</label>
+        <input type="text" id="amt" value="1" inputmode="decimal" aria-describedby="amtErr">
+        <span id="amtErr" class="hint" style="margin:0"></span>
+      </div>
+      <div class="fn-btns">
+        <button type="button" class="primary" data-fn="deposit">depositFunds()<small>client · AWAITING_PAYMENT</small></button>
+        <button type="button" class="primary" data-fn="release">releasePayment()<small>client · FUNDED</small></button>
+        <button type="button" class="primary" data-fn="refund">refundClient()<small>freelancer · FUNDED</small></button>
+        <button type="button" data-fn="balance">getBalance()<small>view · anyone</small></button>
+        <button type="button" data-fn="direct">Send ETH directly<small>no function call</small></button>
+        <button type="button" data-fn="force">Force-send 0.5 ETH<small>selfdestruct trick</small></button>
+      </div>
+      <p class="hint">Buttons are never disabled on purpose, so you can trigger the reverts.</p>
+    </section>
+
+    <section class="card" aria-label="Setup">
+      <h2>Deploy a new escrow</h2>
+      <div class="row">
+        <label for="fl">Freelancer address</label>
+        <select id="fl">
+          <option value="freelancer">Freelancer (normal)</option>
+          <option value="client">Same as client (self-dealing)</option>
+          <option value="zero">Zero address 0x000…000</option>
+        </select>
+        <button type="button" id="deploy">Deploy</button>
+      </div>
+      <h2 style="margin-top:14px">Make things go wrong</h2>
+      <label class="toggle"><input type="checkbox" id="frej"> <span>Freelancer is a contract that <b>rejects ETH</b></span></label>
+      <label class="toggle"><input type="checkbox" id="crej"> <span>Client is a contract that <b>rejects ETH</b></span></label>
+      <label class="toggle"><input type="checkbox" id="reent"> <span>Recipient <b>tries to re-enter</b> the escrow while being paid</span></label>
+      <h2 style="margin-top:14px">Guided scenarios</h2>
+      <div class="row">
+        <button type="button" data-scn="happy">Happy path</button>
+        <button type="button" data-scn="refund">Refund path</button>
+        <button type="button" data-scn="grief">Stuck funds</button>
+        <button type="button" data-scn="race">Release vs refund race</button>
+      </div>
+    </section>
+  </div>
+
+  <section class="card" aria-label="Transaction log">
+    <div class="row" style="justify-content:space-between;margin-bottom:6px">
+      <h2 style="margin:0">Transaction log</h2>
+      <button type="button" class="ghost" id="clear">Clear log</button>
+    </div>
+    <ol id="log" aria-live="polite"><li class="empty">Nothing yet. Pick a role and call a function.</li></ol>
+  </section>
+
+  <footer>
+    Mirrors the contract's check order: role, then state, then amount. A failed transfer reverts the whole transaction, so state is unchanged.
+    Tags like <code>U-03</code> refer to the matching test in <code>test_plan.md</code>. Educational only; not audited.
+  </footer>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const WEI = 10n ** 18n;
+  const STATES = ["AWAITING_PAYMENT", "FUNDED", "COMPLETED", "REFUNDED"];
+  const ADDR = {
+    client: "0xC1A0000000000000000000000000000000000001",
+    freelancer: "0xF4EE000000000000000000000000000000000002",
+    stranger: "0x57A0000000000000000000000000000000000003",
+  };
+  const NAMES = { client: "Client", freelancer: "Freelancer", stranger: "Stranger" };
+  const short = (a) => a.slice(0, 6) + "…" + a.slice(-4);
+
+  class Revert extends Error { constructor(name, why, test) { super(name); this.errName = name; this.why = why; this.test = test; } }
+
+  let world; // { bal:{client,freelancer,stranger}, c:{state,balance,freelancerKey} }
+  let actor = "client";
+  let seq = 0;
+
+  const fmt = (w) => {
+    const neg = w < 0n; if (neg) w = -w;
+    const whole = w / WEI, frac = (w % WEI).toString().padStart(18, "0").slice(0, 4).replace(/0+$/, "");
+    return (neg ? "-" : "") + whole + (frac ? "." + frac : "");
+  };
+  const parseEth = (s) => {
+    s = String(s).trim();
+    if (!/^\d*\.?\d*$/.test(s) || s === "" || s === ".") return null;
+    const [w, f = ""] = s.split(".");
+    if (f.length > 18) return null;
+    return BigInt(w || "0") * WEI + BigInt((f + "0".repeat(18)).slice(0, 18));
+  };
+  const $ = (id) => document.getElementById(id);
+  const flag = (id) => $(id).checked;
+
+  function freshWorld(freelancerKey) {
+    return { bal: { client: 10n * WEI, freelancer: 10n * WEI, stranger: 10n * WEI },
+             c: { state: 0, balance: 0n, freelancerKey } };
+  }
+  const clone = (w) => ({ bal: { ...w.bal }, c: { ...w.c } });
+
+  // ---- contract logic (mirrors FreelanceMilestoneEscrow.sol) ----
+  const rejects = (key) => (key === "freelancer" && flag("frej")) || (key === "client" && flag("crej"));
+
+  function pay(toKey, amount, reenterFn) {
+    if (rejects(toKey)) throw new Revert("TransferFailed", NAMES[toKey] + " is a contract whose receive() reverts, so the whole transaction is undone and state stays FUNDED.", toKey === "freelancer" ? "U-10" : "U-14");
+    world.c.balance -= amount; world.bal[toKey] += amount;
+    if (flag("reent")) {
+      const err = reenterFn(); // attempt performed against the already-finalised state
+      extras.push(err);
+    }
+  }
+  let extras = [];
+
+  const isClient = (s) => s === "client";
+  const isFreelancer = (s) => s === world.c.freelancerKey;
+
+  function depositFunds(sender, value) {
+    if (!isClient(sender)) throw new Revert("Unauthorized", "Only the client may deposit.", "U-03");
+    if (world.c.state !== 0) throw new Revert("InvalidState", "Already funded (state is " + STATES[world.c.state] + ").", "U-05");
+    if (value === 0n) throw new Revert("ZeroDeposit", "msg.value was 0.", "U-04");
+    if (world.bal[sender] < value) throw new Revert("(wallet)", "Your wallet does not hold that much ETH. Not a contract error.");
+    world.bal[sender] -= value; world.c.balance += value;
+    world.c.state = 1;
+    return { text: "FundsDeposited(client, " + fmt(value) + " ETH)", test: "U-06" };
+  }
+
+  function releasePayment(sender) {
+    if (!isClient(sender)) throw new Revert("Unauthorized", "Only the client may release payment.", "U-07");
+    if (world.c.state !== 1) throw new Revert("InvalidState", "State is " + STATES[world.c.state] + ", not FUNDED.", "U-08");
+    const amount = world.c.balance;
+    world.c.state = 2; // effects first
+    extras = [];
+    pay(world.c.freelancerKey, amount, () => {
+      // freelancer contract tries refundClient() mid-payout: it is authorised but state is already COMPLETED
+      return "Re-entry attempt: refundClient() reverted InvalidState (state already COMPLETED). Recipient paid once.";
+    });
+    return { text: "PaymentReleased(freelancer, " + fmt(amount) + " ETH)", test: "U-09", extra: extras.slice() };
+  }
+
+  function refundClient(sender) {
+    if (!isFreelancer(sender)) throw new Revert("Unauthorized", "Only the freelancer may refund the client.", "U-11");
+    if (world.c.state !== 1) throw new Revert("InvalidState", "State is " + STATES[world.c.state] + ", not FUNDED.", "U-12");
+    const amount = world.c.balance;
+    world.c.state = 3;
+    extras = [];
+    pay("client", amount, () => "Re-entry attempt: releasePayment() reverted InvalidState (state already REFUNDED). Recipient paid once.");
+    return { text: "ClientRefunded(client, " + fmt(amount) + " ETH)", test: "U-13", extra: extras.slice() };
+  }
+
+  // ---- transaction wrapper: revert restores everything ----
+  function tx(sender, label, fn) {
+    const snap = clone(world);
+    try {
+      const r = fn();
+      log("ok", sender, label, "Success", r.text, r.test, r.extra);
+      render(true);
+    } catch (e) {
+      if (!(e instanceof Revert)) throw e;
+      world = snap;
+      log("bad", sender, label, "Reverted: " + e.errName, e.why, e.test);
+      render(false);
+    }
+  }
+
+  // ---- UI actions ----
+  function doFn(name) {
+    const amtStr = $("amt").value;
+    if (name === "deposit") {
+      const v = parseEth(amtStr);
+      if (v === null) { $("amtErr").textContent = "Enter a valid ETH amount."; return; }
+      $("amtErr").textContent = "";
+      return tx(actor, "depositFunds{value: " + fmt(v) + " ETH}()", () => depositFunds(actor, v));
+    }
+    if (name === "release") return tx(actor, "releasePayment()", () => releasePayment(actor));
+    if (name === "refund") return tx(actor, "refundClient()", () => refundClient(actor));
+    if (name === "balance") {
+      log("info", actor, "getBalance()", "Returns " + fmt(world.c.balance) + " ETH", "Read-only call, costs nothing and changes nothing.", "U-15");
+      return;
+    }
+    if (name === "direct") {
+      return tx(actor, "send 0.1 ETH straight to the contract", () => { throw new Revert("(no receive/fallback)", "The contract has no payable fallback, so plain transfers revert. Use depositFunds().", "S-03"); });
+    }
+    if (name === "force") {
+      const v = WEI / 2n;
+      const snap = clone(world);
+      if (world.bal.stranger < v) { log("bad", "stranger", "selfdestruct → escrow", "Reverted: (wallet)", "The stranger has no ETH left for this.", "S-02"); return; }
+      world.bal.stranger -= v; world.c.balance += v;
+      const note = world.c.state === 0 ? "State is still AWAITING_PAYMENT but the balance is now non-zero (S-06)."
+        : world.c.state >= 2 ? "The contract is finished, so this ETH is locked forever: there is no withdraw function (S-06)."
+        : "State unchanged. The extra ETH will be paid out with the rest on the next release/refund (S-02).";
+      log("info", "stranger", "selfdestruct → escrow (0.5 ETH)", "Forced in, no code ran", note, world.c.state === 1 ? "S-02" : "S-06");
+      void snap; render(true);
+    }
+  }
+
+  function deploy() {
+    const choice = $("fl").value;
+    if (choice === "zero") {
+      log("bad", "client", "new FreelanceMilestoneEscrow(0x000…000)", "Reverted: ZeroAddress", "A zero freelancer address would send payments to nobody. The previous escrow (if any) is untouched.", "U-01");
+      render(false); return;
+    }
+    world = freshWorld(choice === "client" ? "client" : "freelancer");
+    log("ok", "client", "new FreelanceMilestoneEscrow(" + short(ADDR[world.c.freelancerKey]) + ")", "Deployed",
+      choice === "client" ? "Client == freelancer: allowed. It behaves like an escrow with yourself (S-04). Balances reset to 10 ETH." : "State is AWAITING_PAYMENT. Balances reset to 10 ETH.", "U-02");
+    render(true);
+  }
+
+  function runScenario(n) {
+    $("fl").value = "freelancer"; $("frej").checked = n === "grief"; $("crej").checked = false; $("reent").checked = false;
+    deploy();
+    const step = (who, fn, amt) => { actor = who; if (fn === "deposit") { $("amt").value = amt || "1"; } doFn(fn); };
+    if (n === "happy") { step("client", "deposit", "2"); step("client", "release"); }
+    if (n === "refund") { step("client", "deposit", "2"); step("freelancer", "refund"); }
+    if (n === "grief") { step("client", "deposit", "2"); step("client", "release"); log("info", "—", "What now?", "Funds are stuck", "The freelancer contract rejects ETH, so release fails every time. Untick the toggle and click releasePayment() again to see it recover (S-01).", "S-01"); }
+    if (n === "race") { step("client", "deposit", "1"); step("client", "release"); step("freelancer", "refund"); log("info", "—", "Same-block race", "Only the first wins", "In a real block, whichever transaction is ordered first succeeds; the other reverts InvalidState (I-05).", "I-05"); }
+    setActor("client");
+  }
+
+  // ---- rendering ----
+  function log(kind, who, call, res, why, test, extra) {
+    const ol = $("log");
+    const empty = ol.querySelector(".empty"); if (empty) empty.remove();
+    const li = document.createElement("li");
+    li.className = kind;
+    const who_ = who === "—" ? "" : "[" + (NAMES[who] || who) + "] ";
+    li.innerHTML = (test ? '<span class="test">' + test + "</span>" : "") +
+      '<div class="call"></div><div class="res"></div><div class="why"></div>';
+    li.children[test ? 1 : 0].textContent = "#" + (++seq) + " " + who_ + call;
+    li.children[test ? 2 : 1].textContent = res;
+    li.children[test ? 3 : 2].textContent = why + (extra && extra.length ? " " + extra.join(" ") : "");
+    ol.prepend(li);
+  }
+
+  function render(changed) {
+    document.querySelectorAll(".node").forEach((n) => n.classList.toggle("on", Number(n.dataset.state) === world.c.state));
+    const box = $("accts"); box.innerHTML = "";
+    const cards = [["client", "Client"], ["freelancer", "Freelancer"], ["stranger", "Stranger"]];
+    cards.forEach(([k, label]) => {
+      const el = document.createElement("div");
+      const same = k === "freelancer" && world.c.freelancerKey === "client";
+      el.className = "acct" + (actor === k ? " you" : "");
+      el.innerHTML = '<div class="name"></div><div class="addr"></div><div class="bal"></div>';
+      el.children[0].textContent = label + (actor === k ? " (you)" : "") + (rejects(k) ? " · rejects ETH" : "");
+      el.children[1].textContent = short(ADDR[k]);
+      el.children[2].textContent = same ? "= Client" : fmt(world.bal[k]) + " ETH";
+      box.appendChild(el);
+    });
+    const ce = document.createElement("div");
+    ce.className = "acct" + (changed ? " flash" : "");
+    ce.innerHTML = '<div class="name">Escrow contract</div><div class="addr"></div><div class="bal"></div>';
+    ce.children[1].textContent = STATES[world.c.state];
+    ce.children[2].textContent = fmt(world.c.balance) + " ETH";
+    box.appendChild(ce);
+  }
+
+  function setActor(a) {
+    actor = a;
+    document.querySelectorAll("#actor button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.actor === a)));
+    render(false);
+  }
+
+  // ---- wiring ----
+  document.querySelectorAll("[data-fn]").forEach((b) => b.addEventListener("click", () => doFn(b.dataset.fn)));
+  document.querySelectorAll("[data-scn]").forEach((b) => b.addEventListener("click", () => runScenario(b.dataset.scn)));
+  document.querySelectorAll("#actor button").forEach((b) => b.addEventListener("click", () => setActor(b.dataset.actor)));
+  $("deploy").addEventListener("click", deploy);
+  $("clear").addEventListener("click", () => { $("log").innerHTML = '<li class="empty">Nothing yet. Pick a role and call a function.</li>'; seq = 0; });
+  ["frej", "crej"].forEach((id) => $(id).addEventListener("change", () => render(false)));
+  $("theme").addEventListener("click", () => {
+    const cur = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.dataset.theme = cur === "dark" ? "light" : "dark";
+  });
+
+  world = freshWorld("freelancer");
+  render(false);
+})();
+</script>
+</body>
+</html>
