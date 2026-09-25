@@ -99,6 +99,17 @@ injected wallets) rather than assuming MetaMask.
 contract, recompile and update that file's `ESCROW_ABI` export to match
 `artifacts/FreelanceMilestoneEscrow.json`.
 
+## Interactive simulator (no wallet needed)
+
+`docs/simulator.html` is a single-file, dependency-free replica of the escrow's state machine.
+Open it directly in a browser (double-click, or `open docs/simulator.html`). Choose a role
+(client / freelancer / stranger), call `depositFunds`, `releasePayment` or `refundClient`, and see
+each call succeed or revert with the same custom errors as the contract. Toggles simulate a
+recipient that rejects ETH or tries to re-enter, and you can force-send ETH via `selfdestruct`.
+Log entries are tagged with the matching test ID from `test_plan.md` (e.g. `U-03`, `S-01`).
+It mirrors the Solidity logic in JavaScript for learning and demos; the Hardhat tests remain the
+source of truth.
+
 ## Testing
 
 ```bash
