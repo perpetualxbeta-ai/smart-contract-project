@@ -239,6 +239,9 @@ describe("FreelanceMilestoneEscrow", () => {
       } finally {
         await network.provider.send("evm_setAutomine", [true]);
       }
+      // the loser is now rejected as InvalidState (both callers are correctly authorised)
+      await expect(escrow.connect(client).releasePayment()).to.be.revertedWithCustomError(escrow, "InvalidState");
+      await expect(escrow.connect(freelancer).refundClient()).to.be.revertedWithCustomError(escrow, "InvalidState");
     });
 
     it("I-06 separate deployments are isolated", async () => {
@@ -251,7 +254,7 @@ describe("FreelanceMilestoneEscrow", () => {
     });
   });
 
-  describe("Security (S-01..S-05)", () => {
+  describe("Security (S-01..S-06)", () => {
     it("S-01 reverting recipient traps funds in FUNDED (documented limitation)", async () => {
       const [client] = await ethers.getSigners();
       const bad = await ethers.deployContract("MaliciousFreelancer");
@@ -277,7 +280,7 @@ describe("FreelanceMilestoneEscrow", () => {
       expect(await escrow.getBalance()).to.equal(0n);
     });
 
-    it("S-03 fuzz: random callers can never call any restricted function", async () => {
+    it("S-05 fuzz: random callers can never call any restricted function", async () => {
       const { escrow } = await loadFixture(fundedFixture);
       for (let i = 0; i < 25; i++) {
         const w = ethers.Wallet.createRandom().connect(ethers.provider);
@@ -289,20 +292,36 @@ describe("FreelanceMilestoneEscrow", () => {
       }
     });
 
-    it("S-04 direct ETH transfers (no depositFunds) revert", async () => {
+    it("S-03 direct ETH transfers (no depositFunds) revert", async () => {
       const { escrow, client } = await loadFixture(deployFixture);
       await expect(client.sendTransaction({ to: escrow.target, value: AMOUNT })).to.be.reverted;
       await expect(client.sendTransaction({ to: escrow.target, value: 0, data: "0x12345678" })).to.be.reverted;
       expect(await escrow.getBalance()).to.equal(0n);
     });
 
-    it("S-05 self-dealing (client == freelancer) keeps invariants", async () => {
+    it("S-04 self-dealing (client == freelancer) keeps invariants", async () => {
       const { Escrow, client } = await loadFixture(deployFixture);
       const e = await Escrow.connect(client).deploy(client.address);
       await e.depositFunds({ value: AMOUNT });
       await e.releasePayment();
       expect(await e.state()).to.equal(State.COMPLETED);
       expect(await e.getBalance()).to.equal(0n);
+    });
+
+    it("S-06 forced ETH before funding / after a terminal state (documents edge cases)", async () => {
+      const { escrow, client } = await loadFixture(deployFixture);
+      const half = ethers.parseEther("0.5");
+      // before funding: getBalance() is non-zero even though state is AWAITING_PAYMENT
+      await (await ethers.deployContract("ForceSend", { value: half })).attack(escrow.target);
+      expect(await escrow.state()).to.equal(State.AWAITING_PAYMENT);
+      expect(await escrow.getBalance()).to.equal(half);
+      await escrow.connect(client).depositFunds({ value: AMOUNT });
+      await escrow.connect(client).releasePayment();
+      expect(await escrow.getBalance()).to.equal(0n);
+      // after a terminal state: forced ETH is permanently locked (no withdraw path)
+      await (await ethers.deployContract("ForceSend", { value: half })).attack(escrow.target);
+      expect(await escrow.getBalance()).to.equal(half);
+      await expect(escrow.connect(client).releasePayment()).to.be.revertedWithCustomError(escrow, "InvalidState");
     });
   });
 });
