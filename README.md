@@ -98,3 +98,16 @@ injected wallets) rather than assuming MetaMask.
 `frontend/src/abi.js` embeds the ABI produced by `scripts/compile.js`. If you change the
 contract, recompile and update that file's `ESCROW_ABI` export to match
 `artifacts/FreelanceMilestoneEscrow.json`.
+
+## Testing
+
+```bash
+npm install
+npm test                 # Hardhat: 30 contract tests (U-01..U-16, I-01..I-06, S-01..S-05)
+npm run test:coverage    # optional coverage report
+cd frontend && npm install && npm test   # Vitest: hook tests (I-07, I-08)
+```
+
+Hardhat is configured (`hardhat.config.cjs`) to compile with the pinned `solc` npm package, so no
+compiler download is needed. Hardhat output goes to `hh-artifacts/`, leaving `artifacts/` to
+`scripts/compile.js`. Mock contracts used only by tests live in `contracts/mocks/`.
